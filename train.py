@@ -79,8 +79,8 @@ def eval(model, epoch):
     trans = transforms.ToTensor()
     channel_swap = (1, 2, 0)
     model.eval()
-    test_LL_folder = "datasets/LOL/test/low/"
-    test_NL_folder = "datasets/LOL/test/high/"
+    test_LL_folder = "datasets/test/LOL/low/"
+    test_NL_folder = "datasets/test/LOL/high/"
     test_est_folder = "outputs/eopch_%04d/" % (epoch)
     try:
         os.stat(test_est_folder)
@@ -130,7 +130,7 @@ def main(opt, _run):
     # first use the synthesis data (from VOC 2007) to train the model, then use the LOL real data to fine tune
     print('===> Prepare training data')
     train_set = get_Low_light_training_set(upscale_factor=1, patch_size=opt.patch_size, data_augmentation=True)
-    #train_set = get_training_set("datasets/LOL/train", 1, opt.patch_size, True) # uncomment it to do the fine tuning
+    #train_set = get_training_set("datasets/train/LOL", 1, opt.patch_size, True) # uncomment it to do the fine tuning
     training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize,
                                       pin_memory=True, shuffle=True, drop_last=True)
     # =============================#

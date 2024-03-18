@@ -144,7 +144,7 @@ class Lowlight_DatasetFromVOC(data.Dataset):
     def __init__(self, patch_size, upscale_factor, data_augmentation,
                  transform=None):
         super(Lowlight_DatasetFromVOC, self).__init__()
-        self.imgFolder = "datasets/VOC2007/JPEGImages"
+        self.imgFolder = "datasets/train/VOC2007/JPEGImages"
         self.image_filenames = [join(self.imgFolder, x) for x in listdir(self.imgFolder) if is_image_file(x)]
 
         self.image_filenames = self.image_filenames
