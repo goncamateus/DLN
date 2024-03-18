@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from sacred import Experiment
 from sacred.utils import apply_backspaces_and_linefeeds
-from skimage.metrics._structural_similarity import structural_similarity as compare_ssim
+from skimage.metrics import structural_similarity as compare_ssim
 from skimage.metrics.simple_metrics import peak_signal_noise_ratio as compare_psnr
 from torch.utils.data import DataLoader
 
@@ -24,7 +24,7 @@ from lib.data import get_training_set, is_image_file, get_Low_light_training_set
 from lib.utils import TVLoss, print_network
 from model import DLN
 
-Name_Exp = 'DLN'
+Name_Exp = "DLN"
 exp = Experiment(Name_Exp)
 # exp.observers.append(MongoObserver(url='Host:27017', db_name='low_light'))
 exp.add_source_file("train.py")
@@ -35,20 +35,37 @@ exp.captured_out_filter = apply_backspaces_and_linefeeds
 
 @exp.config
 def cfg():
-    parser = argparse.ArgumentParser(description='PyTorch Low-Light Enhancement')
-    parser.add_argument('--batchSize', type=int, default=32, help='training batch size')
-    parser.add_argument('--nEpochs', type=int, default=500, help='number of epochs to train for')
-    parser.add_argument('--snapshots', type=int, default=10, help='Snapshots')
-    parser.add_argument('--start_iter', type=int, default=0, help='Starting Epoch')
-    parser.add_argument('--lr', type=float, default=1e-5, help='Learning Rate. Default=0.0001')
-    parser.add_argument('--gpu_mode', type=bool, default=True)
-    parser.add_argument('--threads', type=int, default=16, help='number of threads for data loader to use')
-    parser.add_argument('--seed', type=int, default=123, help='random seed to use. Default=123')
-    parser.add_argument('--gpus', default=2, type=int, help='number of gpu')
-    parser.add_argument('--patch_size', type=int, default=128, help='Size of cropped LR image')
-    parser.add_argument('--save_folder', default='models/', help='Location to save checkpoint models')
-    parser.add_argument('--isdimColor', default=True, help='synthesis at HSV color space')
-    parser.add_argument('--isaddNoise', default=True, help='synthesis with noise')
+    parser = argparse.ArgumentParser(description="PyTorch Low-Light Enhancement")
+    parser.add_argument("--batchSize", type=int, default=32, help="training batch size")
+    parser.add_argument(
+        "--nEpochs", type=int, default=500, help="number of epochs to train for"
+    )
+    parser.add_argument("--snapshots", type=int, default=10, help="Snapshots")
+    parser.add_argument("--start_iter", type=int, default=0, help="Starting Epoch")
+    parser.add_argument(
+        "--lr", type=float, default=1e-5, help="Learning Rate. Default=0.0001"
+    )
+    parser.add_argument("--gpu_mode", type=bool, default=True)
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=16,
+        help="number of threads for data loader to use",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=123, help="random seed to use. Default=123"
+    )
+    parser.add_argument("--gpus", default=2, type=int, help="number of gpu")
+    parser.add_argument(
+        "--patch_size", type=int, default=128, help="Size of cropped LR image"
+    )
+    parser.add_argument(
+        "--save_folder", default="models/", help="Location to save checkpoint models"
+    )
+    parser.add_argument(
+        "--isdimColor", default=True, help="synthesis at HSV color space"
+    )
+    parser.add_argument("--isaddNoise", default=True, help="synthesis with noise")
     opt = parser.parse_args()
 
 
@@ -66,7 +83,7 @@ def checkpoint(model, epoch, opt):
 
 
 def log_metrics(_run, logs, iter, end_str=" "):
-    str_print = ''
+    str_print = ""
     for key, value in logs.items():
         _run.log_scalar(key, float(value), iter)
         str_print = str_print + "%s: %.4f || " % (key, value)
@@ -81,30 +98,42 @@ def eval(model, epoch):
     model.eval()
     test_LL_folder = "datasets/test/LOL/low/"
     test_NL_folder = "datasets/test/LOL/high/"
-    test_est_folder = "outputs/eopch_%04d/" % (epoch)
+    test_est_folder = "outputs/epoch_%04d/" % (epoch)
     try:
         os.stat(test_est_folder)
     except:
         os.makedirs(test_est_folder)
 
-    test_LL_list = [join(test_LL_folder, x) for x in sorted(listdir(test_LL_folder)) if is_image_file(x)]
-    test_NL_list = [join(test_NL_folder, x) for x in sorted(listdir(test_LL_folder)) if is_image_file(x)]
-    est_list = [join(test_est_folder, x) for x in sorted(listdir(test_LL_folder)) if is_image_file(x)]
+    test_LL_list = [
+        join(test_LL_folder, x)
+        for x in sorted(listdir(test_LL_folder))
+        if is_image_file(x)
+    ]
+    test_NL_list = [
+        join(test_NL_folder, x)
+        for x in sorted(listdir(test_LL_folder))
+        if is_image_file(x)
+    ]
+    test_list = [
+        join(test_est_folder, x)
+        for x in sorted(listdir(test_LL_folder))
+        if is_image_file(x)
+    ]
     for i in range(test_LL_list.__len__()):
         with torch.no_grad():
-            LL = trans(Image.open(test_LL_list[i]).convert('RGB')).unsqueeze(0).cuda()
+            LL = trans(Image.open(test_LL_list[i]).convert("RGB")).unsqueeze(0).cuda()
             prediction = model(LL)
             prediction = prediction.data[0].cpu().numpy().transpose(channel_swap)
             prediction = prediction * 255.0
             prediction = prediction.clip(0, 255)
-            Image.fromarray(np.uint8(prediction)).save(est_list[i])
+            Image.fromarray(np.uint8(prediction)).save(test_list[i])
     psnr_score = 0.0
     ssim_score = 0.0
     for i in range(test_NL_list.__len__()):
         gt = cv2.imread(test_NL_list[i])
-        est = cv2.imread(est_list[i])
+        est = cv2.imread(test_list[i])
         psnr_val = compare_psnr(gt, est, data_range=255)
-        ssim_val = compare_ssim(gt, est, multichannel=True)
+        ssim_val = compare_ssim(gt, est, win_size=3)
         psnr_score = psnr_score + psnr_val
         ssim_score = ssim_score + ssim_val
     psnr_score = psnr_score / (test_NL_list.__len__())
@@ -128,23 +157,31 @@ def main(opt, _run):
     #   Prepare training data     #
     # =============================#
     # first use the synthesis data (from VOC 2007) to train the model, then use the LOL real data to fine tune
-    print('===> Prepare training data')
-    train_set = get_Low_light_training_set(upscale_factor=1, patch_size=opt.patch_size, data_augmentation=True)
-    #train_set = get_training_set("datasets/train/LOL", 1, opt.patch_size, True) # uncomment it to do the fine tuning
-    training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize,
-                                      pin_memory=True, shuffle=True, drop_last=True)
+    print("===> Prepare training data")
+    train_set = get_Low_light_training_set(
+        upscale_factor=1, patch_size=opt.patch_size, data_augmentation=True
+    )
+    # train_set = get_training_set("datasets/train/LOL", 1, opt.patch_size, True) # uncomment it to do the fine tuning
+    training_data_loader = DataLoader(
+        dataset=train_set,
+        num_workers=opt.threads,
+        batch_size=opt.batchSize,
+        pin_memory=True,
+        shuffle=True,
+        drop_last=True,
+    )
     # =============================#
     #          Build model        #
     # =============================#
-    print('===> Build model')
+    print("===> Build model")
     lighten = DLN(input_dim=3, dim=64)
     lighten = torch.nn.DataParallel(lighten)
-    #lighten.load_state_dict(torch.load("DLN_journal.pth", map_location=lambda storage, loc: storage), strict=True)
+    # lighten.load_state_dict(torch.load("DLN_journal.pth", map_location=lambda storage, loc: storage), strict=True)
 
-    print('---------- Networks architecture -------------')
+    print("---------- Networks architecture -------------")
     print_network(lighten)
 
-    print('----------------------------------------------')
+    print("----------------------------------------------")
     if cuda:
         lighten = lighten.cuda()
 
@@ -166,7 +203,9 @@ def main(opt, _run):
     #         Optimizer            #
     # =============================#
     parameters = [lighten.parameters()]
-    optimizer = optim.Adam(itertools.chain(*parameters), lr=opt.lr, betas=(0.9, 0.999), eps=1e-8)
+    optimizer = optim.Adam(
+        itertools.chain(*parameters), lr=opt.lr, betas=(0.9, 0.999), eps=1e-8
+    )
 
     # =============================#
     #         Training             #
@@ -174,7 +213,7 @@ def main(opt, _run):
     psnr_score, ssim_score = eval(lighten, 0)
     print(psnr_score)
     for epoch in range(opt.start_iter, opt.nEpochs + 1):
-        print('===> training epoch %d' % epoch)
+        print("===> training epoch %d" % epoch)
         epoch_loss = 0
         lighten.train()
 
@@ -203,8 +242,11 @@ def main(opt, _run):
             epoch_loss += loss
 
             if iteration % 10 == 0:
-                print("Epoch: %d/%d || Iter: %d/%d " % (epoch, opt.nEpochs, iteration, len(training_data_loader)),
-                      end=" ==> ")
+                print(
+                    "Epoch: %d/%d || Iter: %d/%d "
+                    % (epoch, opt.nEpochs, iteration, len(training_data_loader)),
+                    end=" ==> ",
+                )
                 logs = {
                     "loss": loss.data,
                     "ssim_loss": ssim_loss.data,
@@ -213,9 +255,16 @@ def main(opt, _run):
                 log_metrics(_run, logs, over_Iter)
                 print("time: {:.4f} s".format(t1 - t0))
 
-        print("===> Epoch {} Complete: Avg. Loss: {:.4f}; ==> {:.2f} seconds".format(epoch, epoch_loss / len(
-            training_data_loader), time.time() - tStart_epoch))
-        _run.log_scalar("epoch_loss", float(epoch_loss / len(training_data_loader)), epoch)
+        print(
+            "===> Epoch {} Complete: Avg. Loss: {:.4f}; ==> {:.2f} seconds".format(
+                epoch,
+                epoch_loss / len(training_data_loader),
+                time.time() - tStart_epoch,
+            )
+        )
+        _run.log_scalar(
+            "epoch_loss", float(epoch_loss / len(training_data_loader)), epoch
+        )
 
         if epoch % (opt.snapshots) == 0:
             file_checkpoint = checkpoint(lighten, epoch, opt)
@@ -230,5 +279,7 @@ def main(opt, _run):
 
         if (epoch + 1) % (opt.nEpochs * 2 / 3) == 0:
             for param_group in optimizer.param_groups:
-                param_group['lr'] /= 10.0
-            print('G: Learning rate decay: lr={}'.format(optimizer.param_groups[0]['lr']))
+                param_group["lr"] /= 10.0
+            print(
+                "G: Learning rate decay: lr={}".format(optimizer.param_groups[0]["lr"])
+            )

@@ -161,7 +161,7 @@ class Lowlight_DatasetFromVOC(data.Dataset):
 
         newWidth = int(width / ratio)
         newHeight = int(height / ratio)
-        ori_img = ori_img.resize((newWidth, newHeight), Image.ANTIALIAS)
+        ori_img = ori_img.resize((newWidth, newHeight), Image.LANCZOS)
 
         high_image = ori_img
 

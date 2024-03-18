@@ -17,6 +17,7 @@ env/
 data/
 datasets/
 output/
+outputs/
 
 # Model files
 models/
