@@ -12,6 +12,8 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
+import wandb
+
 from PIL import Image
 from sacred import Experiment
 from sacred.utils import apply_backspaces_and_linefeeds
@@ -66,6 +68,12 @@ def cfg():
         "--isdimColor", default=True, help="synthesis at HSV color space"
     )
     parser.add_argument("--isaddNoise", default=True, help="synthesis with noise")
+    parser.add_argument(
+        "--fine-tune",
+        type=bool,
+        default=False,
+        help="fine-tune the model with LOL dataset",
+    )
     opt = parser.parse_args()
 
 
@@ -144,6 +152,15 @@ def eval(model, epoch):
 
 @exp.automain
 def main(opt, _run):
+    seed = int(time.time())
+    name = f"Torch-{seed}-{'LOL' if opt.fine_tune else 'VOC'}"
+    # wandb.init(
+    #     project="DLN",
+    #     name=name,
+    #     entity="goncamateus",
+    #     config={"seed": seed},
+    #     save_code=True,
+    # )
     cuda = opt.gpu_mode
     if cuda and not torch.cuda.is_available():
         raise Exception("No GPU found, please run without --cuda")
@@ -158,10 +175,14 @@ def main(opt, _run):
     # =============================#
     # first use the synthesis data (from VOC 2007) to train the model, then use the LOL real data to fine tune
     print("===> Prepare training data")
-    train_set = get_Low_light_training_set(
-        upscale_factor=1, patch_size=opt.patch_size, data_augmentation=True
-    )
-    # train_set = get_training_set("datasets/train/LOL", 1, opt.patch_size, True) # uncomment it to do the fine tuning
+    train_set = get_training_set(
+        "datasets/train/LOL", 1, opt.patch_size, True
+    )  # uncomment it to do the fine tuning
+    # if opt.fine_tune:
+    # else:
+    #     train_set = get_Low_light_training_set(
+    #         upscale_factor=1, patch_size=opt.patch_size, data_augmentation=True
+        # )
     training_data_loader = DataLoader(
         dataset=train_set,
         num_workers=opt.threads,
@@ -176,7 +197,13 @@ def main(opt, _run):
     print("===> Build model")
     lighten = DLN(input_dim=3, dim=64)
     lighten = torch.nn.DataParallel(lighten)
-    # lighten.load_state_dict(torch.load("DLN_journal.pth", map_location=lambda storage, loc: storage), strict=True)
+    lighten.load_state_dict(
+        torch.load(
+            "models/mine/DLN_pretrained.pth", map_location=lambda storage, loc: storage
+        ),
+        strict=True,
+    )
+    # if opt.fine_tune:
 
     print("---------- Networks architecture -------------")
     print_network(lighten)

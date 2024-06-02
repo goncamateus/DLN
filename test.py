@@ -79,7 +79,8 @@ def eval():
             t0 = time.time()
             prediction = model(LL)
             t1 = time.time()
-            time_ave += (t1 - t0)
+            if i != 0:  # skip the first image count due to gpu loading time
+                time_ave += (t1 - t0)
             prediction = prediction.data[0].cpu().numpy().transpose(channel_swap)
 
             prediction = prediction * 255.0
